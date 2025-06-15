@@ -3,6 +3,8 @@ pragma solidity ^0.8.19;
 
 import "./DeployHelpers.s.sol";
 import { DeploySE2Token } from "./DeploySE2Token.s.sol";
+import { DeployBuildguidlToken } from "./DeployBuildguidlToken.s.sol";
+import { DeploySuperToken } from "./DeploySuperToken.s.sol";
 
 /**
  * @notice Main deployment script for all contracts
@@ -21,5 +23,10 @@ contract DeployScript is ScaffoldETHDeploy {
         // Deploy another contract
         // DeployMyContract myContract = new DeployMyContract();
         // myContract.run();
+        DeployBuildguidlToken deployBuildguidlToken = new DeployBuildguidlToken();
+        deployBuildguidlToken.run();
+
+        DeploySuperToken deploySuperToken = new DeploySuperToken();
+        deploySuperToken.run();
     }
 }
