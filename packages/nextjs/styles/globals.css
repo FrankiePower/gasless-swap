@@ -16,9 +16,9 @@
 @plugin "daisyui/theme" {
   name: "light";
 
-  --color-primary: #93bbfb;
+  --color-primary: #BBFBFF;
   --color-primary-content: #212638;
-  --color-secondary: #dae8ff;
+  --color-secondary: #99E8E9;
   --color-secondary-content: #212638;
   --color-accent: #93bbfb;
   --color-accent-content: #212638;
@@ -49,8 +49,8 @@
   --color-accent-content: #f9fbff;
   --color-neutral: #f9fbff;
   --color-neutral-content: #385183;
-  --color-base-100: #385183;
-  --color-base-200: #2a3655;
+  --color-base-100: #000;
+  --color-base-200: #000;
   --color-base-300: #212638;
   --color-base-content: #f9fbff;
   --color-info: #385183;
@@ -63,6 +63,11 @@
 
   --tt-tailw: 6px;
   --tt-bg: var(--color-primary);
+}
+
+/* Custom color variable */
+:root {
+  --color-custom-red: #FE4F67;
 }
 
 /*
@@ -110,6 +115,18 @@
 
 .btn.btn-ghost {
   @apply shadow-none;
+}
+
+/* Custom button class for the new color */
+.btn-custom-red {
+  background-color: var(--color-custom-red) !important;
+  color: white !important;
+  border: none !important;
+}
+
+.btn-custom-red:hover {
+  background-color: #e6455a !important;
+  color: white !important;
 }
 
 .link {

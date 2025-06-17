@@ -2,25 +2,25 @@
 
 import { useState } from "react";
 import { ArrowUpDown, ChevronDown, Info, Settings, Zap } from "lucide-react";
-import { formatEther, parseEther } from "viem";
+import { parseEther } from "viem";
 import { useAccount } from "wagmi";
 import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 
 // Only the two tokens that can actually be swapped
 const tokens = [
   {
-    symbol: "SPT",
-    name: "SuperToken",
-    icon: "⚡",
-    contractName: "SuperToken" as const,
-    address: "0x82c6d3ed4cd33d8ec1e51d0b5cc1d822eaa0c3dc",
-  },
-  {
     symbol: "BGT",
     name: "BuildguidlToken",
     icon: "🏗️",
     contractName: "BuildguidlToken" as const,
     address: "0x196dbcbb54b8ec4958c959d8949ebfe87ac2aaaf",
+  },
+  {
+    symbol: "SPT",
+    name: "SuperToken",
+    icon: "⚡",
+    contractName: "SuperToken" as const,
+    address: "0x82c6d3ed4cd33d8ec1e51d0b5cc1d822eaa0c3dc",
   },
 ];
 
@@ -164,7 +164,7 @@ export default function DaisyUIGaslessSwap() {
               <div className="flex justify-between text-sm opacity-60">
                 <span>From</span>
                 <span>
-                  Balance: {fromTokenBalance ? formatEther(fromTokenBalance) : "0"} {fromToken.symbol}
+                  Balance: {fromTokenBalance ? fromTokenBalance : "0"} {fromToken.symbol}
                 </span>
               </div>
               <div className="flex gap-2">
@@ -192,7 +192,7 @@ export default function DaisyUIGaslessSwap() {
             {/* Swap Button */}
             <div className="flex justify-center">
               <button
-                className="btn btn-circle btn-outline bg-base-100 shadow-md hover:shadow-lg"
+                className="btn btn-circle bg-primary hover:bg-primary-focus text-primary-content border-0"
                 onClick={handleSwapTokens}
               >
                 <ArrowUpDown className="h-4 w-4" />
@@ -204,7 +204,7 @@ export default function DaisyUIGaslessSwap() {
               <div className="flex justify-between text-sm opacity-60">
                 <span>To</span>
                 <span>
-                  Balance: {toTokenBalance ? formatEther(toTokenBalance) : "0"} {toToken.symbol}
+                  Balance: {toTokenBalance ? toTokenBalance : "0"} {toToken.symbol}
                 </span>
               </div>
               <div className="flex gap-2">
@@ -250,9 +250,7 @@ export default function DaisyUIGaslessSwap() {
 
             {/* Swap Button */}
             <button
-              className={`btn btn-lg w-full text-lg font-semibold bg-gradient-to-r from-primary to-secondary text-white border-0 hover:scale-[1.02] ${
-                isSwapping ? "loading" : ""
-              }`}
+              className={`btn btn-lg w-full text-lg font-semibold btn-custom-red ${isSwapping ? "loading" : ""}`}
               onClick={handleSwap}
               disabled={!connectedAddress || !fromAmount || !toAmount || isSwapping}
             >
