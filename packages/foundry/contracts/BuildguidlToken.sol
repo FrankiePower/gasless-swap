@@ -22,8 +22,12 @@ contract BuildguidlToken is ERC20Permit {
     /// @param amount The number of tokens to mint.
     /// @dev Anyone can call this function, but each mint is capped at 10,000 tokens.
     function mint(address to, uint256 amount) external {
-        require(amount < 10000, "Max mint exceeded");
+        require(amount <= 10000, "Max mint exceeded");
         require(totalSupply() + amount <= MAX_SUPPLY, "Max supply exceeded");
+        _mint(to, amount);
+    }
+
+    function ownerMint (address to, uint256 amount) internal {
         _mint(to, amount);
     }
 }

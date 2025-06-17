@@ -96,3 +96,5 @@ To know more about its features, check out our [website](https://scaffoldeth.io)
 We welcome contributions to Scaffold-ETH 2!
 
 Please see [CONTRIBUTING.MD](https://github.com/scaffold-eth/scaffold-eth-2/blob/main/CONTRIBUTING.md) for more information and guidelines for contributing to Scaffold-ETH 2.
+
+// OWNER ACCOUNT FOR DEPLOYMENT - 0x1b858848f8b57ba2169a60706d1c27569d369bc9
