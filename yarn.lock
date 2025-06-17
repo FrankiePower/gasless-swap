@@ -3641,6 +3641,7 @@ __metadata:
     eslint-config-prettier: ~10.1.1
     eslint-plugin-prettier: ~5.2.4
     kubo-rpc-client: ~5.0.2
+    lucide-react: ^0.514.0
     next: ~15.2.3
     next-nprogress-bar: ~2.3.13
     next-themes: ~0.3.0
@@ -8885,6 +8886,12 @@ __metadata:
   languageName: node
   linkType: hard
 
+"gasless-swap@workspace:packages/backend":
+  version: 0.0.0-use.local
+  resolution: "gasless-swap@workspace:packages/backend"
+  languageName: unknown
+  linkType: soft
+
 "gauge@npm:^3.0.0":
   version: 3.0.2
   resolution: "gauge@npm:3.0.2"
@@ -10984,6 +10991,15 @@ __metadata:
   dependencies:
     yallist: ^4.0.0
   checksum: f97f499f898f23e4585742138a22f22526254fdba6d75d41a1c2526b3b6cc5747ef59c5612ba7375f42aca4f8461950e925ba08c991ead0651b4918b7c978297
+  languageName: node
+  linkType: hard
+
+"lucide-react@npm:^0.514.0":
+  version: 0.514.0
+  resolution: "lucide-react@npm:0.514.0"
+  peerDependencies:
+    react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
+  checksum: 8d6459e63863465a00bb5a9a3ffe12bf7f61d67764a399f09e4a30ce62d2809756658cf770ea4c2ae6cb94f7f4217d39810bf5384ade849126188d84917d168d
   languageName: node
   linkType: hard
 
