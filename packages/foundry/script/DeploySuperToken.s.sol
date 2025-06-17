@@ -6,7 +6,7 @@ import "./DeployHelpers.s.sol";
 
 contract DeploySuperToken is ScaffoldETHDeploy {
     function run() external ScaffoldEthDeployerRunner {
-        SuperToken superToken = new SuperToken("SuperToken", "SPT", 1000000000);
+        SuperToken superToken = new SuperToken("SuperToken", "SPT");
         console.logString(string.concat("SuperToken deployed at: ", vm.toString(address(superToken))));
     }
 }

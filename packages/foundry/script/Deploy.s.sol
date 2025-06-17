@@ -5,6 +5,7 @@ import "./DeployHelpers.s.sol";
 import { DeploySE2Token } from "./DeploySE2Token.s.sol";
 import { DeployBuildguidlToken } from "./DeployBuildguidlToken.s.sol";
 import { DeploySuperToken } from "./DeploySuperToken.s.sol";
+import { DeploySwapContract } from "./DeploySwapContract.s.sol";
 
 /**
  * @notice Main deployment script for all contracts
@@ -17,16 +18,20 @@ contract DeployScript is ScaffoldETHDeploy {
         // Deploys all your contracts sequentially
         // Add new deployments here when needed
 
-        DeploySE2Token deploySE2Token = new DeploySE2Token();
-        deploySE2Token.run();
+         DeploySE2Token deploySE2Token = new DeploySE2Token();
+         deploySE2Token.run();
 
-        // Deploy another contract
-        // DeployMyContract myContract = new DeployMyContract();
-        // myContract.run();
+        // // Deploy another contract
+        // // DeployMyContract myContract = new DeployMyContract();
+        // // myContract.run();
+
         DeployBuildguidlToken deployBuildguidlToken = new DeployBuildguidlToken();
         deployBuildguidlToken.run();
 
-        DeploySuperToken deploySuperToken = new DeploySuperToken();
-        deploySuperToken.run();
+         DeploySuperToken deploySuperToken = new DeploySuperToken();
+         deploySuperToken.run();
+
+         DeploySwapContract deploySwapContract = new DeploySwapContract();
+        deploySwapContract.run();
     }
 }

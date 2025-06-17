@@ -6,7 +6,7 @@ import "./DeployHelpers.s.sol";
 
 contract DeployBuildguidlToken is ScaffoldETHDeploy {
     function run() external ScaffoldEthDeployerRunner {
-        BuildguidlToken buildguidlToken = new BuildguidlToken("BuildguidlToken", "BGT", 1000000000);
+        BuildguidlToken buildguidlToken = new BuildguidlToken("BuildguidlToken", "BGT");
         console.logString(string.concat("BuildguidlToken deployed at: ", vm.toString(address(buildguidlToken))));
     }
 }
