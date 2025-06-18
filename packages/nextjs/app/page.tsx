@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ArrowUpDown, ChevronDown, Info, Settings, Zap } from "lucide-react";
 import { parseEther } from "viem";
-import { useAccount } from "wagmi";
+import { useAccount, useSignTypedData } from "wagmi";
 import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 
 // Only the two tokens that can actually be swapped
@@ -26,12 +26,12 @@ const tokens = [
 
 export default function DaisyUIGaslessSwap() {
   const { address: connectedAddress } = useAccount();
+  const { signTypedDataAsync } = useSignTypedData();
   const [fromToken, setFromToken] = useState(tokens[0]);
   const [toToken, setToToken] = useState(tokens[1]);
   const [fromAmount, setFromAmount] = useState("");
   const [toAmount, setToAmount] = useState("");
   const [slippage, setSlippage] = useState(0.5);
-  const [isSwapping, setIsSwapping] = useState(false);
   const [autoSlippage, setAutoSlippage] = useState(true);
 
   // Read balances for both tokens
@@ -62,40 +62,64 @@ export default function DaisyUIGaslessSwap() {
   const handleSwap = async () => {
     if (!connectedAddress || !fromAmount) return;
 
-    setIsSwapping(true);
     try {
       // Determine swap direction (SuperToken to BuildguidlToken or vice versa)
       const isSuperToBuild = fromToken.symbol === "SPT";
 
-      // For now, using a simple 1:1 swap ratio
-      // In a real implementation, you'd calculate the actual swap rate
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // Calculate amounts
       const amountIn = parseEther(fromAmount);
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const fee = parseEther("0"); // No fee for now
+      const totalAmount = amountIn + fee;
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600); // 1 hour from now
 
-      // Note: This is a simplified implementation
-      // In a real gasless swap, you'd need to:
-      // 1. Generate permit signature for the token being spent
-      // 2. Call the swap function with the permit signature
-      // 3. Handle the actual swap logic
+      // Get SwapContract address (this should match the deployed address)
+      const swapContractAddress = "0x05b4cb126885fb10464fdd12666feb25e2563b76";
 
+      // Create permit message for EIP-712 signature
+      const permitMessage = {
+        owner: connectedAddress,
+        spender: swapContractAddress,
+        value: totalAmount,
+        nonce: BigInt(0), // We'll need to get the actual nonce
+        deadline: deadline,
+      };
+
+      // Sign the permit message - THIS WILL TRIGGER METAMASK!
+      const signature = await signTypedDataAsync({
+        domain: {
+          name: fromToken.name,
+          version: "1",
+          chainId: 31337,
+          verifyingContract: fromToken.address,
+        },
+        types: {
+          Permit: [
+            { name: "owner", type: "address" },
+            { name: "spender", type: "address" },
+            { name: "value", type: "uint256" },
+            { name: "nonce", type: "uint256" },
+            { name: "deadline", type: "uint256" },
+          ],
+        },
+        primaryType: "Permit",
+        message: permitMessage,
+      });
+
+      console.log("Permit signature generated:", signature);
+
+      // For now, just show success - we'll integrate with backend later
       console.log("Swap initiated:", {
         isSuperToBuild,
         amountIn: fromAmount,
         fromToken: fromToken.symbol,
         toToken: toToken.symbol,
+        signature,
       });
-
-      // For now, just simulate the swap
-      await new Promise(resolve => setTimeout(resolve, 2000));
 
       setFromAmount("");
       setToAmount("");
     } catch (error) {
       console.error("Swap failed:", error);
-    } finally {
-      setIsSwapping(false);
     }
   };
 
@@ -177,8 +201,12 @@ export default function DaisyUIGaslessSwap() {
                     onChange={e => {
                       setFromAmount(e.target.value);
                       if (e.target.value) {
-                        // Simple 1:1 swap ratio for now
-                        setToAmount(e.target.value);
+                        // Calculate 2% fee and round to nearest whole number
+                        const inputAmount = parseFloat(e.target.value);
+                        const feeAmount = inputAmount * 0.02; // 2% fee
+                        const outputAmount = inputAmount - feeAmount;
+                        const roundedOutput = Math.round(outputAmount);
+                        setToAmount(roundedOutput.toString());
                       } else {
                         setToAmount("");
                       }
@@ -228,8 +256,12 @@ export default function DaisyUIGaslessSwap() {
                 <div className="flex justify-between text-sm">
                   <span className="opacity-60">Rate</span>
                   <span>
-                    1 {fromToken.symbol} = 1 {toToken.symbol}
+                    1 {fromToken.symbol} = {Math.round(0.98 * 100) / 100} {toToken.symbol}
                   </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="opacity-60">Fee</span>
+                  <span className="text-warning">2%</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="opacity-60">Price Impact</span>
@@ -239,7 +271,7 @@ export default function DaisyUIGaslessSwap() {
                   <div className="flex items-center gap-1">
                     <span className="opacity-60">Network Fee</span>
                     <div className="badge badge-success badge-sm">
-                      <Zap className="h-3 w-3 mr-1" />
+                      <Zap className="h-3 w-3" />
                       Gasless
                     </div>
                   </div>
@@ -250,12 +282,15 @@ export default function DaisyUIGaslessSwap() {
 
             {/* Swap Button */}
             <button
-              className={`btn btn-lg w-full text-lg font-semibold btn-custom-red ${isSwapping ? "loading" : ""}`}
+              className="btn btn-lg w-full text-lg font-semibold btn-custom-red"
               onClick={handleSwap}
-              disabled={!connectedAddress || !fromAmount || !toAmount || isSwapping}
+              disabled={!connectedAddress || !fromAmount || !toAmount}
             >
-              {!connectedAddress ? "Connect Wallet" : isSwapping ? "Swapping..." : "Swap"}
+              {!connectedAddress ? "Connect Wallet" : "Swap"}
             </button>
+
+            {/* Fee Text */}
+            <div className="text-center text-sm opacity-60">Fee: 2%</div>
 
             {/* Info Alert */}
             <div className="alert alert-warning">
