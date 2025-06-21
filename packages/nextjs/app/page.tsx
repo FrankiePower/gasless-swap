@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { ArrowUpDown, ChevronDown, Info, Settings, Zap } from "lucide-react";
-import { parseEther } from "viem";
 import { useAccount, useSignTypedData } from "wagmi";
-import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
+import { useScaffoldReadContract } from "~~/hooks/scaffold-eth";
+
+//import { usePermitSign } from "~~/hooks/scaffold-eth/usePermitSign";
 
 // Only the two tokens that can actually be swapped
 const tokens = [
@@ -26,13 +27,13 @@ const tokens = [
 
 export default function DaisyUIGaslessSwap() {
   const { address: connectedAddress } = useAccount();
-  const { signTypedDataAsync } = useSignTypedData();
   const [fromToken, setFromToken] = useState(tokens[0]);
   const [toToken, setToToken] = useState(tokens[1]);
   const [fromAmount, setFromAmount] = useState("");
   const [toAmount, setToAmount] = useState("");
   const [slippage, setSlippage] = useState(0.5);
   const [autoSlippage, setAutoSlippage] = useState(true);
+  const { signTypedDataAsync } = useSignTypedData();
 
   // Read balances for both tokens
   const { data: fromTokenBalance } = useScaffoldReadContract({
@@ -47,10 +48,6 @@ export default function DaisyUIGaslessSwap() {
     args: [connectedAddress],
   });
 
-  // Write contract for swapping
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { writeContractAsync: writeSwapContractAsync } = useScaffoldWriteContract("SwapContract");
-
   const handleSwapTokens = () => {
     const temp = fromToken;
     setFromToken(toToken);
@@ -60,49 +57,39 @@ export default function DaisyUIGaslessSwap() {
   };
 
   const handleSwap = async () => {
+    console.log("swap button clicked");
+
     if (!connectedAddress || !fromAmount) return;
 
     try {
       // Determine swap direction (SuperToken to BuildguidlToken or vice versa)
       const isSuperToBuild = fromToken.symbol === "SPT";
 
-      // Calculate amounts
-      const amountIn = parseEther(fromAmount);
-      const fee = parseEther("0"); // No fee for now
-      const totalAmount = amountIn + fee;
-      const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600); // 1 hour from now
-
-      // Get SwapContract address (this should match the deployed address)
-      const swapContractAddress = "0x05b4cb126885fb10464fdd12666feb25e2563b76";
-
-      // Create permit message for EIP-712 signature
-      const permitMessage = {
-        owner: connectedAddress,
-        spender: swapContractAddress,
-        value: totalAmount,
-        nonce: BigInt(0), // We'll need to get the actual nonce
-        deadline: deadline,
-      };
-
-      // Sign the permit message - THIS WILL TRIGGER METAMASK!
+      // Sign the permit using our custom hook
       const signature = await signTypedDataAsync({
-        domain: {
-          name: fromToken.name,
-          version: "1",
-          chainId: 31337,
-          verifyingContract: fromToken.address,
-        },
         types: {
-          Permit: [
-            { name: "owner", type: "address" },
-            { name: "spender", type: "address" },
-            { name: "value", type: "uint256" },
-            { name: "nonce", type: "uint256" },
-            { name: "deadline", type: "uint256" },
+          Person: [
+            { name: "name", type: "string" },
+            { name: "wallet", type: "address" },
+          ],
+          Mail: [
+            { name: "from", type: "Person" },
+            { name: "to", type: "Person" },
+            { name: "contents", type: "string" },
           ],
         },
-        primaryType: "Permit",
-        message: permitMessage,
+        primaryType: "Mail",
+        message: {
+          from: {
+            name: "Cow",
+            wallet: "0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826",
+          },
+          to: {
+            name: "Bob",
+            wallet: "0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB",
+          },
+          contents: "Hello, Bob!",
+        },
       });
 
       console.log("Permit signature generated:", signature);
