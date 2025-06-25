@@ -27,7 +27,5 @@ contract BuildguidlToken is ERC20Permit {
         _mint(to, amount);
     }
 
-    function ownerMint (address to, uint256 amount) internal {
-        _mint(to, amount);
-    }
+   
 }
