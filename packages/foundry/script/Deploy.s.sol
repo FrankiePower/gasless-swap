@@ -18,18 +18,18 @@ contract DeployScript is ScaffoldETHDeploy {
         // Deploys all your contracts sequentially
         // Add new deployments here when needed
 
-         DeploySE2Token deploySE2Token = new DeploySE2Token();
-         deploySE2Token.run();
+        //  DeploySE2Token deploySE2Token = new DeploySE2Token();
+        //  deploySE2Token.run();
 
         // // Deploy another contract
         // // DeployMyContract myContract = new DeployMyContract();
         // // myContract.run();
 
-        DeployBuildguidlToken deployBuildguidlToken = new DeployBuildguidlToken();
-        deployBuildguidlToken.run();
+        // DeployBuildguidlToken deployBuildguidlToken = new DeployBuildguidlToken();
+        // deployBuildguidlToken.run();
 
-         DeploySuperToken deploySuperToken = new DeploySuperToken();
-         deploySuperToken.run();
+        //  DeploySuperToken deploySuperToken = new DeploySuperToken();
+        //  deploySuperToken.run();
 
          DeploySwapContract deploySwapContract = new DeploySwapContract();
         deploySwapContract.run();
