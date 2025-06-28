@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useGlobal } from "../contexts/Global";
 import { ArrowUpDown, ChevronDown, Info, Settings, Zap } from "lucide-react";
-import { useAccount, useSignTypedData } from "wagmi";
+import { parseUnits } from "viem";
+import { useAccount } from "wagmi";
+import { apiUrl } from "~~/config/apiUrl";
 import { useScaffoldReadContract } from "~~/hooks/scaffold-eth";
-
-//import { usePermitSign } from "~~/hooks/scaffold-eth/usePermitSign";
+import { usePermitSign } from "~~/hooks/scaffold-eth/usePermitSign";
 
 // Only the two tokens that can actually be swapped
 const tokens = [
@@ -14,38 +16,47 @@ const tokens = [
     name: "BuildguidlToken",
     icon: "🏗️",
     contractName: "BuildguidlToken" as const,
-    address: "0x196dbcbb54b8ec4958c959d8949ebfe87ac2aaaf",
+    address: "0x8c56bcb0aA14f67d653340652Bd9C9273298FdB3",
   },
   {
     symbol: "SPT",
     name: "SuperToken",
     icon: "⚡",
     contractName: "SuperToken" as const,
-    address: "0x82c6d3ed4cd33d8ec1e51d0b5cc1d822eaa0c3dc",
+    address: "0x9a7d82ADc5df5B2E516c432db1EcAFE5Aaf069a3",
   },
 ];
 
 export default function DaisyUIGaslessSwap() {
-  const { address: connectedAddress } = useAccount();
-  const [fromToken, setFromToken] = useState(tokens[0]);
+  const { address: connectedAddress, chain } = useAccount();
+  const {
+    selectedToken: contextFromToken,
+    setSelectedToken: setFromToken,
+    amount: fromAmount,
+    setAmount: setFromAmount,
+    isLoading: isSwapping,
+    setIsLoading: setIsSwapping,
+  } = useGlobal();
+
+  // Provide fallback for fromToken if context is null
+  const fromToken = contextFromToken || tokens[0];
   const [toToken, setToToken] = useState(tokens[1]);
-  const [fromAmount, setFromAmount] = useState("");
   const [toAmount, setToAmount] = useState("");
   const [slippage, setSlippage] = useState(0.5);
   const [autoSlippage, setAutoSlippage] = useState(true);
-  const { signTypedDataAsync } = useSignTypedData();
+  const { signPermit, isSigning } = usePermitSign(fromToken.address, connectedAddress);
 
   // Read balances for both tokens
-  const { data: fromTokenBalance } = useScaffoldReadContract({
-    contractName: fromToken.contractName,
+  const { data: fromTokenBalance } = useScaffoldReadContract<"BuildguidlToken" | "SuperToken", "balanceOf">({
+    contractName: fromToken.contractName as "BuildguidlToken" | "SuperToken",
     functionName: "balanceOf",
-    args: [connectedAddress],
+    args: [connectedAddress as string],
   });
 
-  const { data: toTokenBalance } = useScaffoldReadContract({
-    contractName: toToken.contractName,
+  const { data: toTokenBalance } = useScaffoldReadContract<"BuildguidlToken" | "SuperToken", "balanceOf">({
+    contractName: toToken.contractName as "BuildguidlToken" | "SuperToken",
     functionName: "balanceOf",
-    args: [connectedAddress],
+    args: [connectedAddress as string],
   });
 
   const handleSwapTokens = () => {
@@ -58,55 +69,68 @@ export default function DaisyUIGaslessSwap() {
 
   const handleSwap = async () => {
     console.log("swap button clicked");
+    if (!connectedAddress || !fromAmount || !toAmount || !chain) {
+      alert("Please connect your wallet and enter valid amounts");
+      return;
+    }
 
-    if (!connectedAddress || !fromAmount) return;
-
+    setIsSwapping(true);
     try {
-      // Determine swap direction (SuperToken to BuildguidlToken or vice versa)
       const isSuperToBuild = fromToken.symbol === "SPT";
+      const amountIn = parseFloat(fromAmount);
+      const feeAmount = amountIn * 0.02; // 2% fee in output token units
+      const totalCharge = amountIn + feeAmount; // Total in input token units
 
-      // Sign the permit using our custom hook
-      const signature = await signTypedDataAsync({
-        types: {
-          Person: [
-            { name: "name", type: "string" },
-            { name: "wallet", type: "address" },
-          ],
-          Mail: [
-            { name: "from", type: "Person" },
-            { name: "to", type: "Person" },
-            { name: "contents", type: "string" },
-          ],
+      // Sign permit for totalCharge (this will convert to wei internally)
+      const permitResult = await signPermit(fromToken.address, fromToken.name, totalCharge.toString());
+      console.log("Permit signature generated:", permitResult.signature);
+
+      // Convert amounts to wei only once
+      const amountInWei = parseUnits(amountIn.toString(), 18);
+      const feeWei = parseUnits(feeAmount.toString(), 18);
+
+      const message = {
+        owner: connectedAddress,
+        recipient: connectedAddress,
+        value: amountInWei.toString(), // _amountIn in wei
+        charge: feeWei.toString(), // _fee in wei
+        deadline: permitResult.deadline.toString(),
+      };
+
+      const response = await fetch(`${apiUrl}/api/swap`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-        primaryType: "Mail",
-        message: {
-          from: {
-            name: "Cow",
-            wallet: "0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826",
-          },
-          to: {
-            name: "Bob",
-            wallet: "0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB",
-          },
-          contents: "Hello, Bob!",
-        },
+        body: JSON.stringify({
+          signature: permitResult.signature,
+          message,
+          isSuperToBuild,
+          amountIn: amountInWei.toString(), // Already in wei
+          deadline: permitResult.deadline.toString(),
+          to: connectedAddress,
+          fee: feeWei.toString(), // Already in wei
+          chain: chain.id.toString(),
+        }),
       });
 
-      console.log("Permit signature generated:", signature);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || errorData.message || `HTTP error! status: ${response.status}`);
+      }
 
-      // For now, just show success - we'll integrate with backend later
-      console.log("Swap initiated:", {
-        isSuperToBuild,
-        amountIn: fromAmount,
-        fromToken: fromToken.symbol,
-        toToken: toToken.symbol,
-        signature,
-      });
-
-      setFromAmount("");
-      setToAmount("");
+      const data = await response.json();
+      if (data.status) {
+        alert("Swap successful!");
+        console.log("Transaction hash:", data.transactionHash);
+      } else {
+        throw new Error(data.error || "Swap failed");
+      }
     } catch (error) {
+      alert(`Swap failed: ${error}`);
       console.error("Swap failed:", error);
+    } finally {
+      setIsSwapping(false);
     }
   };
 
@@ -271,9 +295,9 @@ export default function DaisyUIGaslessSwap() {
             <button
               className="btn btn-lg w-full text-lg font-semibold btn-custom-red"
               onClick={handleSwap}
-              disabled={!connectedAddress || !fromAmount || !toAmount}
+              disabled={!connectedAddress || !fromAmount || !toAmount || isSigning || isSwapping}
             >
-              {!connectedAddress ? "Connect Wallet" : "Swap"}
+              {!connectedAddress ? "Connect Wallet" : isSigning ? "Signing..." : isSwapping ? "Swapping..." : "Swap"}
             </button>
 
             {/* Fee Text */}
