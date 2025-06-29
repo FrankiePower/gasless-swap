@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   11155111: {
     BuildguidlToken: {
-      address: "0x8c56bcb0aa14f67d653340652bd9c9273298fdb3",
+      address: "0x341b3060c5dc9bdbbb3e6d1f01b09c1a5b76d22c",
       abi: [
         {
           type: "constructor",
@@ -34,6 +34,19 @@ const deployedContracts = {
               name: "",
               type: "bytes32",
               internalType: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "MAX_MINT_PER_TX",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
             },
           ],
           stateMutability: "view",
@@ -576,11 +589,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750293984.json",
+      deploymentFile: "run-1751155356.json",
       deploymentScript: "Deploy.s.sol",
     },
     SuperToken: {
-      address: "0x9a7d82adc5df5b2e516c432db1ecafe5aaf069a3",
+      address: "0x9359c395ef76af7a17e46b6f559ce0997fec31e3",
       abi: [
         {
           type: "constructor",
@@ -607,6 +620,19 @@ const deployedContracts = {
               name: "",
               type: "bytes32",
               internalType: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "MAX_MINT_PER_TX",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
             },
           ],
           stateMutability: "view",
@@ -1149,11 +1175,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750293984.json",
+      deploymentFile: "run-1751155356.json",
       deploymentScript: "Deploy.s.sol",
     },
     SwapContract: {
-      address: "0x571b4228e412fc2ebaa209a75651bde93ce4b4c2",
+      address: "0xe4494fbe3fbfdf89f408cb6c8cf9a50b213d4373",
       abi: [
         {
           type: "constructor",
@@ -1409,7 +1435,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750869685.json",
+      deploymentFile: "run-1751155980.json",
       deploymentScript: "Deploy.s.sol",
     },
   },
