@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useGlobal } from "../contexts/Global";
 import { ArrowUpDown, ChevronDown, Info, Settings, Zap } from "lucide-react";
 import { parseUnits } from "viem";
@@ -16,14 +16,14 @@ const tokens = [
     name: "BuildguidlToken",
     icon: "🏗️",
     contractName: "BuildguidlToken" as const,
-    address: "0x8c56bcb0aA14f67d653340652Bd9C9273298FdB3",
+    address: "0x341b3060C5dC9BDBbb3E6D1f01b09c1A5B76d22C",
   },
   {
     symbol: "SPT",
     name: "SuperToken",
     icon: "⚡",
     contractName: "SuperToken" as const,
-    address: "0x9a7d82ADc5df5B2E516c432db1EcAFE5Aaf069a3",
+    address: "0x9359c395Ef76af7A17E46b6F559CE0997FEC31E3",
   },
 ];
 
@@ -36,6 +36,7 @@ export default function DaisyUIGaslessSwap() {
     setAmount: setFromAmount,
     isLoading: isSwapping,
     setIsLoading: setIsSwapping,
+    setTokenAddress,
   } = useGlobal();
 
   // Provide fallback for fromToken if context is null
@@ -44,7 +45,12 @@ export default function DaisyUIGaslessSwap() {
   const [toAmount, setToAmount] = useState("");
   const [slippage, setSlippage] = useState(0.5);
   const [autoSlippage, setAutoSlippage] = useState(true);
-  const { signPermit, isSigning } = usePermitSign(fromToken.address, connectedAddress);
+  const { signPermit, isSigning } = usePermitSign();
+
+  // Set tokenAddress in global context when fromToken changes
+  useEffect(() => {
+    setTokenAddress(fromToken.address as `0x${string}`);
+  }, [fromToken.address, setTokenAddress]);
 
   // Read balances for both tokens
   const { data: fromTokenBalance } = useScaffoldReadContract<"BuildguidlToken" | "SuperToken", "balanceOf">({
@@ -63,6 +69,7 @@ export default function DaisyUIGaslessSwap() {
     const temp = fromToken;
     setFromToken(toToken);
     setToToken(temp);
+
     setFromAmount(toAmount);
     setToAmount(fromAmount);
   };
@@ -78,22 +85,20 @@ export default function DaisyUIGaslessSwap() {
     try {
       const isSuperToBuild = fromToken.symbol === "SPT";
       const amountIn = parseFloat(fromAmount);
-      const feeAmount = amountIn * 0.02; // 2% fee in output token units
-      const totalCharge = amountIn + feeAmount; // Total in input token units
+      const feeAmount = amountIn * 0.02; // 2% fee for display
+      const totalCharge = amountIn + feeAmount; // Total in input token units (including fee)
 
-      // Sign permit for totalCharge (this will convert to wei internally)
-      const permitResult = await signPermit(fromToken.address, fromToken.name, totalCharge.toString());
+      // Sign permit for totalCharge (input + fee)
+      const permitResult = await signPermit(fromToken.name, totalCharge.toString());
       console.log("Permit signature generated:", permitResult.signature);
 
-      // Convert amounts to wei only once
-      const amountInWei = parseUnits(amountIn.toString(), 18);
-      const feeWei = parseUnits(feeAmount.toString(), 18);
+      // Convert amount to wei for the message
+      const amountInWei = parseUnits(totalCharge.toString(), 18);
 
+      // Construct streamlined message for the swap
       const message = {
         owner: connectedAddress,
-        recipient: connectedAddress,
-        value: amountInWei.toString(), // _amountIn in wei
-        charge: feeWei.toString(), // _fee in wei
+        value: amountInWei.toString(), // Total amount (input + fee) in wei
         deadline: permitResult.deadline.toString(),
       };
 
@@ -106,10 +111,7 @@ export default function DaisyUIGaslessSwap() {
           signature: permitResult.signature,
           message,
           isSuperToBuild,
-          amountIn: amountInWei.toString(), // Already in wei
-          deadline: permitResult.deadline.toString(),
-          to: connectedAddress,
-          fee: feeWei.toString(), // Already in wei
+          tokenAddress: fromToken.address,
           chain: chain.id.toString(),
         }),
       });
@@ -157,7 +159,9 @@ export default function DaisyUIGaslessSwap() {
               <button
                 key={token.symbol}
                 className="btn btn-ghost w-full justify-between h-16 px-4"
-                onClick={() => onSelect(token)}
+                onClick={() => {
+                  onSelect(token);
+                }}
               >
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">{token.icon}</span>
@@ -212,7 +216,7 @@ export default function DaisyUIGaslessSwap() {
                     onChange={e => {
                       setFromAmount(e.target.value);
                       if (e.target.value) {
-                        // Calculate 2% fee and round to nearest whole number
+                        // Calculate output amount (1:1 ratio minus 2% fee)
                         const inputAmount = parseFloat(e.target.value);
                         const feeAmount = inputAmount * 0.02; // 2% fee
                         const outputAmount = inputAmount - feeAmount;
