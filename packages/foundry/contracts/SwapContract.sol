@@ -3,19 +3,15 @@ pragma solidity ^0.8.28;
 
 import "./IERC20Permit.sol";
 
+/// @title SwapContract
+/// @notice Swaps SuperToken ↔ BuildguidlToken at 1:1 minus a 2% fee, using EIP-2612 gasless approvals.
 contract SwapContract {
     IERC20Permit public immutable superToken;
     IERC20Permit public immutable buildguidlToken;
     address public immutable owner;
 
-    uint256 public constant FEE_PERCENT = 2; // 2% fee
+    uint256 public constant FEE_PERCENT = 2; // 2%
     uint256 public constant FEE_DENOMINATOR = 100;
-
-    constructor(address superTokenAddress, address buildguidlTokenAddress) {
-        superToken = IERC20Permit(superTokenAddress);
-        buildguidlToken = IERC20Permit(buildguidlTokenAddress);
-        owner = msg.sender;
-    }
 
     error GaslessSwap__TransferFailed(string step);
     error GaslessSwap__PermitFailed();
@@ -30,6 +26,21 @@ contract SwapContract {
         _;
     }
 
+    constructor(address superTokenAddress, address buildguidlTokenAddress) {
+        require(superTokenAddress != address(0), "Invalid SuperToken address");
+        require(buildguidlTokenAddress != address(0), "Invalid BuildguidlToken address");
+
+        superToken = IERC20Permit(superTokenAddress);
+        buildguidlToken = IERC20Permit(buildguidlTokenAddress);
+        owner = msg.sender;
+    }
+
+    /// @notice Executes a gasless token swap using permit and transferFrom.
+    /// @param isSuperToBuild Direction of the swap.
+    /// @param _owner Address performing the swap.
+    /// @param _amountIn Input token amount (in wei).
+    /// @param _deadline Deadline for permit validity.
+    /// @param _v,_r,_s Components of the EIP-2612 signature.
     function swap(
         bool isSuperToBuild,
         address _owner,
@@ -42,37 +53,41 @@ contract SwapContract {
         IERC20Permit tokenIn = isSuperToBuild ? superToken : buildguidlToken;
         IERC20Permit tokenOut = isSuperToBuild ? buildguidlToken : superToken;
 
-        // Calculate output amount (1:1 ratio minus 2% fee)
+        // Calculate output amount (2% fee)
         uint256 feeAmount = (_amountIn * FEE_PERCENT) / FEE_DENOMINATOR;
         uint256 amountOut = _amountIn - feeAmount;
 
-        // Check contract balance
-        if (tokenOut.balanceOf(address(this)) < amountOut) {
+        // Check contract balance of output token
+        uint256 availableOut = tokenOut.balanceOf(address(this));
+        emit DebugBalance(address(tokenOut), availableOut);
+
+        if (availableOut < amountOut) {
             revert GaslessSwap__InsufficientContractBalance();
         }
 
-        // Gasless approval for full amount
+        // Call permit (gasless approval)
         try tokenIn.permit(_owner, address(this), _amountIn, _deadline, _v, _r, _s) {
-            
+            emit DebugPermit(address(tokenIn), true);
         } catch {
-            
+            emit DebugPermit(address(tokenIn), false);
             revert GaslessSwap__PermitFailed();
         }
 
-        // Take tokenIn
-        bool success1 = tokenIn.transferFrom(_owner, address(this), _amountIn);
-        emit DebugTransfer("transferFrom", success1, _amountIn);
-        if (!success1) revert GaslessSwap__TransferFailed("transferFrom");
+        // Pull tokens from owner
+        bool successIn = tokenIn.transferFrom(_owner, address(this), _amountIn);
+        emit DebugTransfer("transferFrom", successIn, _amountIn);
+        if (!successIn) revert GaslessSwap__TransferFailed("transferFrom");
 
-        // Send tokenOut
-        bool success2 = tokenOut.transfer(_owner, amountOut);
-        emit DebugTransfer("transferToRecipient", success2, amountOut);
-        if (!success2) revert GaslessSwap__TransferFailed("transferToRecipient");
-
+        // Send tokens to recipient
+        bool successOut = tokenOut.transfer(_owner, amountOut);
+        emit DebugTransfer("transferToRecipient", successOut, amountOut);
+        if (!successOut) revert GaslessSwap__TransferFailed("transferToRecipient");
     }
 
+    /// @notice Owner can withdraw any ERC-20 token from contract.
     function withdrawTokens(address token, uint256 amount) external onlyOwner {
-        IERC20Permit(token).transfer(owner, amount);
+        bool success = IERC20Permit(token).transfer(owner, amount);
+        require(success, "Withdraw failed");
     }
 
     function getSuperTokenBalance() external view returns (uint256) {
