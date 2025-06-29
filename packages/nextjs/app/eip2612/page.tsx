@@ -155,3 +155,17 @@
 // };
 
 // export default ERC20;
+
+// Temporary placeholder component to fix module requirement
+const EIP2612Page = () => {
+  return (
+    <div className="flex items-center flex-col flex-grow pt-10">
+      <div className="px-5 text-center max-w-4xl">
+        <h1 className="text-4xl font-bold">EIP-2612 Gasless Approval</h1>
+        <p>This page will be implemented for EIP-2612 gasless token approvals.</p>
+      </div>
+    </div>
+  );
+};
+
+export default EIP2612Page;
