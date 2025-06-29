@@ -24,3 +24,7 @@ dist
 
 #passkeys
 .env
+
+# Foundry
+packages/foundry/broadcast/
+packages/foundry/cache/
