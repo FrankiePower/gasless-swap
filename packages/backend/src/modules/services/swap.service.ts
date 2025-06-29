@@ -124,8 +124,8 @@ export const swapGasless = async (
     );
     console.log("Swap transaction sent, waiting for confirmation...");
     const receipt = await tx.wait();
-    console.log("Gasless swap successful:", receipt.transactionHash);
-    return receipt.transactionHash;
+    console.log("Gasless swap successful:", receipt);
+    return receipt;
   } catch (error: any) {
     console.error("=== SWAP ERROR DETAILS ===");
     console.error("Error code:", error.data);
