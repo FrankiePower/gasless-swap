@@ -6,8 +6,8 @@ import "./DeployHelpers.s.sol";
 
 contract DeploySwapContract is ScaffoldETHDeploy {
     function run() external ScaffoldEthDeployerRunner {
-        address superTokenAddress = 0x9a7d82ADc5df5B2E516c432db1EcAFE5Aaf069a3;
-        address buildguidlTokenAddress = 0x8c56bcb0aA14f67d653340652Bd9C9273298FdB3;
+        address superTokenAddress = 0x9359c395Ef76af7A17E46b6F559CE0997FEC31E3;
+        address buildguidlTokenAddress = 0x341b3060C5dC9BDBbb3E6D1f01b09c1A5B76d22C;
         SwapContract swapContract = new SwapContract(superTokenAddress, buildguidlTokenAddress);
         deployments.push(Deployment("SwapContract", address(swapContract)));
         console.logString(string.concat("SwapContract deployed at: ", vm.toString(address(swapContract))));
