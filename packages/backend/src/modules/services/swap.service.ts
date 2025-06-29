@@ -1,87 +1,136 @@
 import { ethers } from "ethers";
 import dotenv from "dotenv";
 dotenv.config();
-import { Message } from "../../common/interfaces/Imessage";
-import { getContract } from "../../common/config/contracts";
 
-// the private key used in the deployer of the swap contract (OWNER)
-const SPENDER_PRIVATE_KEY = process.env.PRIVATE_KEY as string;
-
-// check if all the required environment variables are set
-if (!SPENDER_PRIVATE_KEY) {
-  throw new Error("Missing required environment variables");
+export interface SwapMessage {
+  owner: string;
+  value: string;
+  deadline: string;
 }
 
-// the function to execute the swap using the SwapContract
+const SPENDER_PRIVATE_KEY = process.env.PRIVATE_KEY as string;
+
+if (!SPENDER_PRIVATE_KEY) {
+  throw new Error("Missing SPENDER_PRIVATE_KEY environment variable");
+}
+
 export const swapGasless = async (
   signature: string,
-  message: Message,
+  message: SwapMessage,
   isSuperToBuild: boolean,
-  amountIn: string,
-  deadline: string,
-  to: string,
-  fee: string,
+  tokenAddress: string,
+  contractAddress: string,
   rpcUrl: string,
   chain: string
-) => {
-  const SWAP_CONTRACT_ADDRESS = getContract(chain);
+): Promise<string> => {
+  console.log("=== SWAP SERVICE DEBUG ===");
+  console.log("Input parameters:");
+  console.log("- signature:", signature);
+  console.log("- message:", message);
+  console.log("- isSuperToBuild:", isSuperToBuild);
+  console.log("- tokenAddress:", tokenAddress);
+  console.log("- contractAddress:", contractAddress);
+  console.log("- rpcUrl:", rpcUrl);
+  console.log("- chain:", chain);
 
-  // Convert raw amounts to wei
-  const amountInWei = ethers.parseUnits(amountIn, 18);
-  const feeWei = ethers.parseUnits(fee, 18);
+  // Validate tokenAddress
+  const validTokens = [
+    "0x341b3060C5dC9BDBbb3E6D1f01b09c1A5B76d22C", // BGT
+    "0x9359c395Ef76af7A17E46b6F559CE0997FEC31E3" // SPT
+  ];
+  // if (!validTokens.includes(tokenAddress.toLowerCase())) {
+  //   throw new Error("Invalid token address");
+  // }
 
-  // extract the v, r, s from the signature
+  // Convert message.value to BigInt
+  const amountInWei = BigInt(message.value);
+
+  // Extract v, r, s from signature
   const { v, r, s } = ethers.Signature.from(signature);
 
-  // create a provider
+  // Create provider and wallet
   const provider = new ethers.JsonRpcProvider(rpcUrl);
-
-  // create a wallet with the private key
   const spenderWallet = new ethers.Wallet(SPENDER_PRIVATE_KEY, provider);
+
+  console.log("=== CONTRACT SETUP ===");
+  console.log("Provider created");
+  console.log("Wallet address:", spenderWallet.address);
+
+  // Check contract balances before swap
+  const tokenAbi = ["function balanceOf(address owner) view returns (uint256)"];
+  
+  const superTokenAddress = "0x9359c395Ef76af7A17E46b6F559CE0997FEC31E3";
+  const buildguidlTokenAddress = "0x341b3060C5dC9BDBbb3E6D1f01b09c1A5B76d22C";
+  
+  const superTokenContract = new ethers.Contract(superTokenAddress, tokenAbi, provider);
+  const buildguidlTokenContract = new ethers.Contract(buildguidlTokenAddress, tokenAbi, provider);
+  
+  const superTokenBalance = await superTokenContract.balanceOf(contractAddress);
+  const buildguidlTokenBalance = await buildguidlTokenContract.balanceOf(contractAddress);
+  
+  console.log("=== CONTRACT BALANCES ===");
+  console.log("SuperToken balance in contract:", ethers.formatEther(superTokenBalance));
+  console.log("BuildguidlToken balance in contract:", ethers.formatEther(buildguidlTokenBalance));
+
+  // Calculate expected output
+  const feeAmount = (amountInWei * BigInt(2)) / BigInt(100); // 2% fee
+  const amountOut = amountInWei - feeAmount;
+  
+  console.log("=== SWAP CALCULATIONS ===");
+  console.log("Amount in (wei):", amountInWei.toString());
+  console.log("Fee amount (wei):", feeAmount.toString());
+  console.log("Amount out (wei):", amountOut.toString());
+  console.log("Amount out (ether):", ethers.formatEther(amountOut));
+  
+  // Check if contract has enough tokens
+  const requiredBalance = isSuperToBuild ? buildguidlTokenBalance : superTokenBalance;
+  console.log("Required balance:", ethers.formatEther(requiredBalance));
+  console.log("Has sufficient balance:", requiredBalance >= amountOut);
 
   console.log("Preparing to call SwapContract...");
   console.log("Swap direction:", isSuperToBuild ? "SuperToken → BuildguidlToken" : "BuildguidlToken → SuperToken");
-  console.log("From:", message.owner);
-  console.log("To:", to);
-  console.log("Amount In (raw):", amountIn);
+  console.log("Owner:", message.owner);
   console.log("Amount In (wei):", amountInWei.toString());
-  console.log("Fee (raw):", fee);
-  console.log("Fee (wei):", feeWei.toString());
-  console.log("Deadline:", deadline);
-  console.log("Contract:", SWAP_CONTRACT_ADDRESS);
+  console.log("Deadline:", message.deadline);
+  console.log("Token Address:", tokenAddress);
+  console.log("Contract:", contractAddress);
   console.log("v:", v);
   console.log("r:", r);
   console.log("s:", s);
 
   // SwapContract ABI
   const swapContractAbi = [
-    "function swap(bool isSuperToBuild, address _from, uint256 _amountIn, uint256 _deadline, uint8 _v, bytes32 _r, bytes32 _s) external",
+    "function swap(bool isSuperToBuild, address _owner, uint256 _amountIn, uint256 _deadline, uint8 _v, bytes32 _r, bytes32 _s) external",
   ];
 
-  // Create contract instance with signer directly
+  // Create contract instance
   const swapContract = new ethers.Contract(
-    SWAP_CONTRACT_ADDRESS,
+    contractAddress,
     swapContractAbi,
     spenderWallet
   );
 
-  // Call the `swap` function
+  // Call the swap function
   try {
+    console.log("=== CALLING SWAP FUNCTION ===");
     const tx = await swapContract.swap(
       isSuperToBuild,
       message.owner,
       amountInWei,
-      deadline,
+      message.deadline,
       v,
       r,
-      s,
+      s
     );
     console.log("Swap transaction sent, waiting for confirmation...");
     const receipt = await tx.wait();
     console.log("Gasless swap successful:", receipt.transactionHash);
     return receipt.transactionHash;
   } catch (error: any) {
-    console.error("Gasless swap failed:", error);
-    throw error;
+    console.error("=== SWAP ERROR DETAILS ===");
+    console.error("Error code:", error.data);
+    console.error("Error message:", error.message);
+    console.error("Full error:", error);
+    throw new Error(`Swap failed: ${error.message}`);
   }
-}; 
+};
