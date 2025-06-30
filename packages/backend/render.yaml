@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: gasless-swap-backend
+    env: node
+    buildCommand: yarn install && yarn build
+    startCommand: yarn start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: APP_NAME
+        value: Gasless Swap API
+      - key: ALCHEMY_API_KEY
+        sync: false
+      - key: PRIVATE_KEY
+        sync: false
+      - key: GASLESS_SWAP_CONTRACT_ADDRESS
+        sync: false
+      - key: OWNER_ADDRESS
+        sync: false
+      - key: OWNER_PRIVATE_KEY
+        sync: false
+      - key: RPC_URL_SEPOLIA
+        sync: false
+      - key: DB_URL
+        sync: false
