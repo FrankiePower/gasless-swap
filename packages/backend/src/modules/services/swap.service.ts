@@ -1,5 +1,6 @@
 import { ethers } from "ethers";
 import dotenv from "dotenv";
+import { logSwapTransaction } from "./swapHistory.service";
 dotenv.config();
 
 export interface SwapMessage {
@@ -125,6 +126,35 @@ export const swapGasless = async (
     console.log("Swap transaction sent, waiting for confirmation...");
     const receipt = await tx.wait();
     console.log("Gasless swap successful:", receipt);
+
+    // Log the swap transaction to database
+    try {
+      const fromToken = isSuperToBuild 
+        ? { symbol: "SPT", name: "SuperToken", address: superTokenAddress }
+        : { symbol: "BGT", name: "BuildguidlToken", address: buildguidlTokenAddress };
+      
+      const toToken = isSuperToBuild 
+        ? { symbol: "BGT", name: "BuildguidlToken", address: buildguidlTokenAddress }
+        : { symbol: "SPT", name: "SuperToken", address: superTokenAddress };
+
+      await logSwapTransaction({
+        userAddress: message.owner,
+        fromToken,
+        toToken,
+        amountIn: amountInWei.toString(),
+        amountOut: amountOut.toString(),
+        feeAmount: feeAmount.toString(),
+        transactionHash: receipt.hash,
+        chainId: chain,
+        blockNumber: receipt.blockNumber,
+      });
+      
+      console.log("Swap transaction logged to database successfully");
+    } catch (logError) {
+      console.error("Failed to log swap transaction:", logError);
+      // Don't throw here - the swap was successful, just logging failed
+    }
+
     return receipt;
   } catch (error: any) {
     console.error("=== SWAP ERROR DETAILS ===");
