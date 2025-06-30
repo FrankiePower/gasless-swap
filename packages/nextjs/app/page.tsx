@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useGlobal } from "../contexts/Global";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { ArrowUpDown, ChevronDown, Info, Settings } from "lucide-react";
 import { formatUnits, parseUnits } from "viem";
 import { useAccount } from "wagmi";
@@ -28,6 +29,7 @@ const tokenConfigs = [
 
 export default function DaisyUIGaslessSwap() {
   const { address: connectedAddress, chain } = useAccount();
+  const connectModal = useConnectModal();
   const {
     selectedToken: contextFromToken,
     setSelectedToken: setFromToken,
@@ -91,32 +93,31 @@ export default function DaisyUIGaslessSwap() {
 
   const handleSwap = async () => {
     console.log("swap button clicked");
-    if (!connectedAddress || !fromAmount || !toAmount || !chain) {
-      alert("Please connect your wallet and enter valid amounts");
+    if (!connectedAddress) {
+      if (connectModal?.openConnectModal) connectModal.openConnectModal();
       return;
     }
-
+    if (!fromAmount || !toAmount || !chain) {
+      alert("Please enter valid amounts");
+      return;
+    }
     setIsSwapping(true);
     try {
       const isSuperToBuild = fromToken.symbol === "SPT";
       const amountIn = parseFloat(fromAmount);
       const feeAmount = amountIn * 0.02; // 2% fee for display
       const totalCharge = amountIn + feeAmount; // Total in input token units (including fee)
-
       // Sign permit for totalCharge (input + fee)
       const permitResult = await signPermit(fromToken.name, totalCharge.toString());
       console.log("Permit signature generated:", permitResult.signature);
-
       // Convert amount to wei for the message
       const amountInWei = parseUnits(totalCharge.toString(), 18);
-
       // Construct streamlined message for the swap
       const message = {
         owner: connectedAddress,
         value: amountInWei.toString(), // Total amount (input + fee) in wei
         deadline: permitResult.deadline.toString(),
       };
-
       const response = await fetch(`${apiUrl}/api/swap`, {
         method: "POST",
         headers: {
@@ -130,12 +131,10 @@ export default function DaisyUIGaslessSwap() {
           chain: chain.id.toString(),
         }),
       });
-
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || errorData.message || `HTTP error! status: ${response.status}`);
       }
-
       const data = await response.json();
       if (data.status) {
         alert("Swap successful!");
@@ -314,9 +313,9 @@ export default function DaisyUIGaslessSwap() {
             <button
               className="btn btn-lg w-full text-lg font-semibold btn-custom-red"
               onClick={handleSwap}
-              disabled={!connectedAddress || !fromAmount || !toAmount || isSigning || isSwapping}
+              disabled={!fromAmount || !toAmount || isSigning || isSwapping}
             >
-              {!connectedAddress ? "Connect Wallet" : isSigning ? "Signing..." : isSwapping ? "Swapping..." : "Swap"}
+              {isSigning ? "Signing..." : isSwapping ? "Swapping..." : "Swap"}
             </button>
 
             {/* Info Alert */}

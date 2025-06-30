@@ -1,168 +1,123 @@
-// "use client";
+"use client";
 
-// import { useState } from "react";
-// import type { NextPage } from "next";
-// import { formatEther, parseEther } from "viem";
-// import { useAccount } from "wagmi";
-// import { AddressInput, InputBase } from "~~/components/scaffold-eth";
-// import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
+import { useState } from "react";
+import Link from "next/link";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { parseEther } from "viem";
+import { useAccount } from "wagmi";
+import { useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 
-// const ERC20: NextPage = () => {
-//   const { address: connectedAddress } = useAccount();
+const tokenConfigs = [
+  {
+    symbol: "BGT",
+    name: "BuildguidlToken",
+    icon: "🏗️",
+    contractName: "BuildguidlToken" as const,
+  },
+  {
+    symbol: "SPT",
+    name: "SuperToken",
+    icon: "⚡",
+    contractName: "SuperToken" as const,
+  },
+];
 
-//   const [toAddress, setToAddress] = useState<string>("");
-//   const [amount, setAmount] = useState<string>("");
-
-//   const { data: balance } = useScaffoldReadContract({
-//     contractName: "SE2Token",
-//     functionName: "balanceOf",
-//     args: [connectedAddress],
-//   });
-
-//   const { data: totalSupply } = useScaffoldReadContract({
-//     contractName: "SE2Token",
-//     functionName: "totalSupply",
-//   });
-
-//   const { writeContractAsync: writeSE2TokenAsync } = useScaffoldWriteContract("SE2Token");
-
-//   return (
-//     <>
-//       <div className="flex items-center flex-col flex-grow pt-10">
-//         <div className="px-5 text-center max-w-4xl">
-//           <h1 className="text-4xl font-bold">ERC-20 Token</h1>
-//           <div>
-//             <p>
-//               This extension introduces an ERC-20 token contract and demonstrates how to use interact with it, including
-//               getting a holder balance and transferring tokens.
-//             </p>
-//             <p>
-//               The ERC-20 Token Standard introduces a standard for Fungible Tokens (
-//               <a
-//                 target="_blank"
-//                 href="https://eips.ethereum.org/EIPS/eip-20"
-//                 className="underline font-bold text-nowrap"
-//               >
-//                 EIP-20
-//               </a>
-//               ), in other words, each Token is exactly the same (in type and value) as any other Token.
-//             </p>
-//             <p>
-//               The ERC-20 token contract is implemented using the{" "}
-//               <a
-//                 target="_blank"
-//                 href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/ERC20.sol"
-//                 className="underline font-bold text-nowrap"
-//               >
-//                 ERC-20 token implementation
-//               </a>{" "}
-//               from OpenZeppelin.
-//             </p>
-//           </div>
-
-//           <div className="divider my-0" />
-
-//           <h2 className="text-3xl font-bold mt-4">Interact with the token</h2>
-
-//           <div>
-//             <p>Below you can see the total token supply (total amount of minted tokens) and your token balance.</p>
-//             <p>
-//               You can use the <strong>Mint 100 Tokens</strong> button to get 100 new tokens (for free! Check the
-//               contract implementation)
-//             </p>
-//             <p>
-//               You can also transfer tokens to another address. Just fill in the address and the amount of tokens you
-//               want to send and click the send button. Test it by opening this page on an incognito window and sending
-//               tokens to the new generated burner wallet address.
-//             </p>
-//           </div>
-//         </div>
-
-//         <div className="flex flex-col justify-center items-center bg-base-300 w-full mt-8 px-8 pt-6 pb-12">
-//           <div className="flex justify-center items-center space-x-2 flex-col sm:flex-row">
-//             <p className="my-2 mr-2 font-bold text-2xl">Total Supply:</p>
-//             <p className="text-xl">{totalSupply ? formatEther(totalSupply) : 0} tokens</p>
-//           </div>
-//           <div className="flex justify-center items-center space-x-2 flex-col sm:flex-row">
-//             <p className="y-2 mr-2 font-bold text-2xl">Your Balance:</p>
-//             <p className="text-xl">{balance ? formatEther(balance) : 0} tokens</p>
-//           </div>
-//           <div className="flex justify-center items-center space-x-2 flex-col sm:flex-row mb-6">
-//             <button
-//               className="btn btn-accent text-lg px-12 mt-2"
-//               onClick={async () => {
-//                 try {
-//                   await writeSE2TokenAsync({ functionName: "mint", args: [connectedAddress, parseEther("100")] });
-//                 } catch (e) {
-//                   console.error("Error while minting token", e);
-//                 }
-//               }}
-//             >
-//               Mint 100 Tokens
-//             </button>
-//           </div>
-//           <div className="flex flex-col bg-base-100 px-10 py-10 text-center items-center w-full md:w-2/4 rounded-3xl mt-10">
-//             <h3 className="text-2xl font-bold">Transfer Tokens</h3>
-//             <div className="flex flex-col items-center justify-between w-full lg:w-3/5 px-2 mt-4">
-//               <div className="font-bold mb-2">Send To:</div>
-//               <div>
-//                 <AddressInput value={toAddress} onChange={setToAddress} placeholder="Address" />
-//               </div>
-//             </div>
-//             <div className="flex flex-col items-center justify-between w-full lg:w-3/5 p-2 mt-4">
-//               <div className="flex gap-2 mb-2">
-//                 <div className="font-bold">Amount:</div>
-//                 <div>
-//                   <button
-//                     disabled={!balance}
-//                     className="btn btn-secondary text-xs h-6 min-h-6"
-//                     onClick={() => {
-//                       if (balance) {
-//                         setAmount(formatEther(balance));
-//                       }
-//                     }}
-//                   >
-//                     Max
-//                   </button>
-//                 </div>
-//               </div>
-//               <div>
-//                 <InputBase value={amount} onChange={setAmount} placeholder="0" />
-//               </div>
-//             </div>
-//             <div>
-//               <button
-//                 className="btn btn-primary text-lg px-12 mt-2"
-//                 disabled={!toAddress || !amount}
-//                 onClick={async () => {
-//                   try {
-//                     await writeSE2TokenAsync({ functionName: "transfer", args: [toAddress, parseEther(amount)] });
-//                     setToAddress("");
-//                     setAmount("");
-//                   } catch (e) {
-//                     console.error("Error while transfering token", e);
-//                   }
-//                 }}
-//               >
-//                 Send
-//               </button>
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-//     </>
-//   );
-// };
-
-// export default ERC20;
-
-// Temporary placeholder component to fix module requirement
 const EIP2612Page = () => {
+  const { address: connectedAddress } = useAccount();
+  const { openConnectModal } = useConnectModal();
+  const { writeContractAsync: mintBGTAsync, isMining: isMintingBGT } = useScaffoldWriteContract("BuildguidlToken");
+  const { writeContractAsync: mintSPTAsync, isMining: isMintingSPT } = useScaffoldWriteContract("SuperToken");
+  const [mintStatus, setMintStatus] = useState<string>("");
+
+  const handleMint = async (token: (typeof tokenConfigs)[0]) => {
+    if (!connectedAddress) {
+      if (openConnectModal) openConnectModal();
+      return;
+    }
+    setMintStatus("");
+    try {
+      if (token.contractName === "BuildguidlToken") {
+        await mintBGTAsync({ functionName: "mint", args: [connectedAddress, parseEther("100")] });
+      } else {
+        await mintSPTAsync({ functionName: "mint", args: [connectedAddress, parseEther("100")] });
+      }
+      setMintStatus(`Successfully minted 100 ${token.symbol}!`);
+    } catch (e) {
+      setMintStatus("Mint failed. See console for details.");
+
+      console.error(e);
+    }
+  };
+
   return (
-    <div className="flex items-center flex-col flex-grow pt-10">
-      <div className="px-5 text-center max-w-4xl">
-        <h1 className="text-4xl font-bold">EIP-2612 Gasless Approval</h1>
-        <p>This page will be implemented for EIP-2612 gasless token approvals.</p>
+    <div className="flex flex-col items-center px-4 py-10 max-w-2xl mx-auto">
+      <h1 className="text-4xl font-bold mb-2">What is ERC-2612?</h1>
+      <div className="mb-4 text-base-content/70">
+        <strong>ERC-2612</strong> lets you approve token spending <span className="font-bold">without paying gas</span>{" "}
+        or needing ETH. It uses a signature instead of a regular transaction.
+      </div>
+      <div className="mb-6 text-base-content/60">
+        <span className="font-bold">Why does this matter?</span> Normally, to let a dApp (like a swap) use your tokens,
+        you have to send an &quot;approve&quot; transaction and pay gas. With ERC-2612, you just sign a message, and
+        anyone (even a smart contract) can submit it for you&mdash;no ETH required!
+      </div>
+      <div className="w-full mb-6">
+        <h2 className="text-xl font-bold mb-2">How does it work?</h2>
+        <ol className="list-decimal ml-6 mb-2">
+          <li>
+            You sign a special message (off-chain, no gas needed) saying &quot;I allow this contract to spend my
+            tokens.&quot;
+          </li>
+          <li>
+            Anyone (even a dApp or relayer) can send that signature to the blockchain using the <code>permit</code>{" "}
+            function.
+          </li>
+          <li>The contract checks your signature and updates your allowance&mdash;no ETH or gas from you!</li>
+        </ol>
+        <div className="bg-base-200 rounded p-3 text-sm mb-2">
+          <span className="font-bold">In this app:</span> When you swap tokens, we use ERC-2612 &quot;permit&quot; so
+          you don&apos;t need to approve or pay gas. Just sign, and swap!
+        </div>
+      </div>
+      <div className="w-full mb-6">
+        <h2 className="text-xl font-bold mb-2">Step 1: Mint tokens</h2>
+        <p className="mb-2">
+          Mint <span className="font-bold ">either</span> BuildguidlToken (BGT) or SuperToken (SPT) to your wallet
+          below.
+          <br />
+        </p>
+        <p className="mb-4">
+          <span className="font-bold">Then, use the swap page to exchange one for the other—no ETH or gas needed!</span>
+        </p>
+        <div className="flex gap-4 mb-2">
+          <button className="btn btn-accent" disabled={isMintingBGT} onClick={() => handleMint(tokenConfigs[0])}>
+            {tokenConfigs[0].icon} Mint 100 {tokenConfigs[0].symbol}
+          </button>
+          <button className="btn btn-accent" disabled={isMintingSPT} onClick={() => handleMint(tokenConfigs[1])}>
+            {tokenConfigs[1].icon} Mint 100 {tokenConfigs[1].symbol}
+          </button>
+        </div>
+        {mintStatus && <div className="text-success mb-4">{mintStatus}</div>}
+      </div>
+      <div className="w-full mb-6">
+        <h2 className="text-xl font-bold mb-2">Step 2: Try Gasless Swap</h2>
+        <p className="mb-4">
+          Now that you have tokens, go to the swap page and try a gasless swap using ERC-2612 permit!
+          <br />
+          <span className="font-bold">You can swap BGT for SPT, or SPT for BGT. it is instant and gasless.</span>
+        </p>
+        <div className="flex justify-center">
+          <Link href="/" className="btn btn-accent text-lg px-8">
+            Go to Swap
+          </Link>
+        </div>
+      </div>
+      <div className="w-full mt-8 text-xs text-base-content/50 text-center">
+        Want the technical details?{" "}
+        <a href="https://eips.ethereum.org/EIPS/eip-2612" target="_blank" className="underline">
+          Read the full ERC-2612 spec
+        </a>
+        .
       </div>
     </div>
   );
