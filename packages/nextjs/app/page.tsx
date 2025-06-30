@@ -2,28 +2,27 @@
 
 import React, { useEffect, useState } from "react";
 import { useGlobal } from "../contexts/Global";
-import { ArrowUpDown, ChevronDown, Info, Settings, Zap } from "lucide-react";
-import { parseUnits } from "viem";
+import { ArrowUpDown, ChevronDown, Info, Settings } from "lucide-react";
+import { formatUnits, parseUnits } from "viem";
 import { useAccount } from "wagmi";
 import { apiUrl } from "~~/config/apiUrl";
-import { useScaffoldReadContract } from "~~/hooks/scaffold-eth";
+import { useDeployedContractInfo, useScaffoldReadContract } from "~~/hooks/scaffold-eth";
 import { usePermitSign } from "~~/hooks/scaffold-eth/usePermitSign";
+import { useSwapHistory } from "~~/hooks/useSwapHistory";
 
-// Only the two tokens that can actually be swapped
-const tokens = [
+// Token configuration
+const tokenConfigs = [
   {
     symbol: "BGT",
     name: "BuildguidlToken",
     icon: "🏗️",
     contractName: "BuildguidlToken" as const,
-    address: "0x341b3060C5dC9BDBbb3E6D1f01b09c1A5B76d22C",
   },
   {
     symbol: "SPT",
     name: "SuperToken",
     icon: "⚡",
     contractName: "SuperToken" as const,
-    address: "0x9359c395Ef76af7A17E46b6F559CE0997FEC31E3",
   },
 ];
 
@@ -38,6 +37,22 @@ export default function DaisyUIGaslessSwap() {
     setIsLoading: setIsSwapping,
     setTokenAddress,
   } = useGlobal();
+
+  // Get deployed contract info for both tokens
+  const { data: buildguidlTokenInfo } = useDeployedContractInfo({ contractName: "BuildguidlToken" });
+  const { data: superTokenInfo } = useDeployedContractInfo({ contractName: "SuperToken" });
+
+  // Create tokens array with dynamic addresses
+  const tokens = tokenConfigs.map(config => {
+    const contractInfo = config.contractName === "BuildguidlToken" ? buildguidlTokenInfo : superTokenInfo;
+    return {
+      ...config,
+      address: contractInfo?.address || "0x0000000000000000000000000000000000000000", // fallback address
+    };
+  });
+
+  // Get recent swap history
+  const { recentSwaps, isLoading: isHistoryLoading, error: historyError } = useSwapHistory(5);
 
   // Provide fallback for fromToken if context is null
   const fromToken = contextFromToken || tokens[0];
@@ -125,6 +140,8 @@ export default function DaisyUIGaslessSwap() {
       if (data.status) {
         alert("Swap successful!");
         console.log("Transaction hash:", data.transactionHash);
+        // Refresh the swap history after successful swap
+        window.location.reload(); // Simple refresh for now
       } else {
         throw new Error(data.error || "Swap failed");
       }
@@ -203,7 +220,8 @@ export default function DaisyUIGaslessSwap() {
               <div className="flex justify-between text-sm opacity-60">
                 <span>From</span>
                 <span>
-                  Balance: {fromTokenBalance ? fromTokenBalance : "0"} {fromToken.symbol}
+                  Balance: {fromTokenBalance ? Math.floor(Number(formatUnits(fromTokenBalance, 18))) : "0"}{" "}
+                  {fromToken.symbol}
                 </span>
               </div>
               <div className="flex gap-2">
@@ -247,7 +265,7 @@ export default function DaisyUIGaslessSwap() {
               <div className="flex justify-between text-sm opacity-60">
                 <span>To</span>
                 <span>
-                  Balance: {toTokenBalance ? toTokenBalance : "0"} {toToken.symbol}
+                  Balance: {toTokenBalance ? Math.floor(Number(formatUnits(toTokenBalance, 18))) : "0"} {toToken.symbol}
                 </span>
               </div>
               <div className="flex gap-2">
@@ -275,22 +293,19 @@ export default function DaisyUIGaslessSwap() {
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="opacity-60">Fee</span>
+                  <span className="opacity-60">Token Fee</span>
                   <span className="text-warning">2%</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="opacity-60">Price Impact</span>
-                  <span className="text-success">{"<0.01%"}</span>
+                  <span className="text-success">{"<0.001%"}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <div className="flex items-center gap-1">
                     <span className="opacity-60">Network Fee</span>
-                    <div className="badge badge-success badge-sm">
-                      <Zap className="h-3 w-3" />
-                      Gasless
-                    </div>
                   </div>
-                  <span className="text-success">$0.00</span>
+
+                  <div className="badge badge-success badge-sm">Gasless</div>
                 </div>
               </div>
             )}
@@ -303,9 +318,6 @@ export default function DaisyUIGaslessSwap() {
             >
               {!connectedAddress ? "Connect Wallet" : isSigning ? "Signing..." : isSwapping ? "Swapping..." : "Swap"}
             </button>
-
-            {/* Fee Text */}
-            <div className="text-center text-sm opacity-60">Fee: 2%</div>
 
             {/* Info Alert */}
             <div className="alert alert-warning">
@@ -323,28 +335,60 @@ export default function DaisyUIGaslessSwap() {
             <h3 className="card-title">Recent Activity</h3>
           </div>
           <div className="card-body pt-0">
-            <div className="space-y-3">
-              {[
-                { from: "SPT", to: "BGT", amount: "100", time: "2 min ago", status: "completed" },
-                { from: "BGT", to: "SPT", amount: "50", time: "1 hour ago", status: "completed" },
-                { from: "SPT", to: "BGT", amount: "25", time: "3 hours ago", status: "completed" },
-              ].map((tx, i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-base-200 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm font-medium">{tx.from}</span>
-                      <ArrowUpDown className="h-3 w-3 opacity-60" />
-                      <span className="text-sm font-medium">{tx.to}</span>
+            {isHistoryLoading ? (
+              <div className="flex justify-center py-8">
+                <span className="loading loading-spinner loading-md"></span>
+              </div>
+            ) : historyError ? (
+              <div className="text-center py-8 text-error">
+                <p>Failed to load recent activity</p>
+                <p className="text-sm opacity-60">{historyError}</p>
+              </div>
+            ) : recentSwaps.length === 0 ? (
+              <div className="text-center py-8 text-base-content/60">
+                <p>No recent swaps yet</p>
+                <p className="text-sm">Be the first to make a swap!</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {recentSwaps.map((tx, i) => (
+                  <div key={i} className="flex items-center justify-between p-3 bg-base-200 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm font-medium">{tx.from}</span>
+                        <ArrowUpDown className="h-3 w-3 opacity-60" />
+                        <span className="text-sm font-medium">{tx.to}</span>
+                      </div>
+                      <div
+                        className={`badge badge-sm ${
+                          tx.status === "completed"
+                            ? "badge-success"
+                            : tx.status === "pending"
+                              ? "badge-warning"
+                              : "badge-error"
+                        }`}
+                      >
+                        {tx.status}
+                      </div>
                     </div>
-                    <div className="badge badge-success badge-sm">{tx.status}</div>
+                    <div className="text-right">
+                      <div className="text-sm font-medium">{tx.amount}</div>
+                      <div className="text-xs opacity-60">{tx.time}</div>
+                      {tx.transactionHash && (
+                        <div className="text-xs opacity-40 font-mono">
+                          {tx.transactionHash.slice(0, 6)}...{tx.transactionHash.slice(-4)}
+                        </div>
+                      )}
+                      {tx.userAddress && (
+                        <div className="text-xs opacity-40 font-mono">
+                          {tx.userAddress.slice(0, 6)}...{tx.userAddress.slice(-4)}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-sm font-medium">{tx.amount}</div>
-                    <div className="text-xs opacity-60">{tx.time}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
