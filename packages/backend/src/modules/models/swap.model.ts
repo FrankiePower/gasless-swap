@@ -75,7 +75,7 @@ const SwapSchema: Schema = new Schema({
 
 // Index for efficient queries
 SwapSchema.index({ userAddress: 1, timestamp: -1 });
-SwapSchema.index({ transactionHash: 1 });
+//SwapSchema.index({ transactionHash: 1 });
 SwapSchema.index({ timestamp: -1 });
 
 export const Swap = mongoose.model<ISwap>("Swap", SwapSchema); 
