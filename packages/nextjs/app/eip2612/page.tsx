@@ -3,9 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { parseEther } from "viem";
-import { useAccount } from "wagmi";
-import { useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
+import { useAccount, useSignTypedData } from "wagmi";
+import { apiUrl } from "~~/config/apiUrl";
+import { useDeployedContractInfo } from "~~/hooks/scaffold-eth";
 
 const tokenConfigs = [
   {
@@ -25,27 +25,80 @@ const tokenConfigs = [
 const EIP2612Page = () => {
   const { address: connectedAddress } = useAccount();
   const { openConnectModal } = useConnectModal();
-  const { writeContractAsync: mintBGTAsync, isMining: isMintingBGT } = useScaffoldWriteContract("BuildguidlToken");
-  const { writeContractAsync: mintSPTAsync, isMining: isMintingSPT } = useScaffoldWriteContract("SuperToken");
-  const [mintStatus, setMintStatus] = useState<string>("");
+  const { signTypedDataAsync } = useSignTypedData();
+  const [gaslessMintStatus, setGaslessMintStatus] = useState<string>("");
+  const [txHash, setTxHash] = useState<string>("");
+  const { data: buildguidlTokenInfo } = useDeployedContractInfo({ contractName: "BuildguidlToken" });
+  const { data: superTokenInfo } = useDeployedContractInfo({ contractName: "SuperToken" });
+  const [signingToken, setSigningToken] = useState<string | null>(null);
 
-  const handleMint = async (token: (typeof tokenConfigs)[0]) => {
+  const handleGaslessMint = async (token: (typeof tokenConfigs)[0]) => {
     if (!connectedAddress) {
       if (openConnectModal) openConnectModal();
       return;
     }
-    setMintStatus("");
+    setGaslessMintStatus("");
+    setSigningToken(token.symbol);
     try {
-      if (token.contractName === "BuildguidlToken") {
-        await mintBGTAsync({ functionName: "mint", args: [connectedAddress, parseEther("100")] });
-      } else {
-        await mintSPTAsync({ functionName: "mint", args: [connectedAddress, parseEther("100")] });
+      // Get the correct verifyingContract address
+      let verifyingContract = "0x0000000000000000000000000000000000000000";
+      if (token.contractName === "BuildguidlToken" && buildguidlTokenInfo?.address) {
+        verifyingContract = buildguidlTokenInfo.address;
+      } else if (token.contractName === "SuperToken" && superTokenInfo?.address) {
+        verifyingContract = superTokenInfo.address;
       }
-      setMintStatus(`Successfully minted 100 ${token.symbol}!`);
+      // Prepare EIP-712 domain and types
+      const domain = {
+        name: token.name,
+        version: "1",
+        chainId: 11155111, // Hardhat default, replace with correct chainId if needed
+        verifyingContract,
+      };
+      const types = {
+        Mint: [
+          { name: "action", type: "string" },
+          { name: "token", type: "string" },
+          { name: "amount", type: "string" },
+          { name: "to", type: "address" },
+        ],
+      };
+      const message = {
+        action: "mint",
+        token: token.symbol,
+        amount: "100",
+        to: connectedAddress,
+      };
+      // Sign the message
+      const signature = await signTypedDataAsync({
+        domain,
+        types,
+        primaryType: "Mint",
+        message,
+      });
+      console.log("Gasless mint signature:", signature);
+      // Send to backend
+      const response = await fetch(`${apiUrl}/api/mint/gasless-mint`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message, signature }),
+      });
+      const data = await response.json();
+      if (response.ok && data.status === "success") {
+        // Show success modal instead of status message
+        setTxHash(data.txHash);
+        const modal = document.getElementById("gasless-mint-success-modal") as HTMLDialogElement;
+        if (modal) {
+          modal.showModal();
+        }
+        setGaslessMintStatus(""); // Clear any previous status
+      } else {
+        setGaslessMintStatus(`Gasless mint failed: ${data.error || data.message}`);
+      }
     } catch (e) {
-      setMintStatus("Mint failed. See console for details.");
-
+      setGaslessMintStatus("Gasless mint failed. See console for details.");
       console.error(e);
+    } finally {
+      setSigningToken(null);
     }
   };
 
@@ -87,38 +140,63 @@ const EIP2612Page = () => {
           <br />
         </p>
         <p className="mb-4">
-          <span className="font-bold">Then, use the swap page to exchange one for the other—no ETH or gas needed!</span>
+          <span className="font-bold">Then, use the swap page to exchange one for the other—no ETH/Gas needed!</span>
         </p>
         <div className="flex gap-4 mb-2">
-          <button className="btn btn-accent" disabled={isMintingBGT} onClick={() => handleMint(tokenConfigs[0])}>
-            {tokenConfigs[0].icon} Mint 100 {tokenConfigs[0].symbol}
+          <button
+            className="btn btn-primary border-white"
+            disabled={signingToken !== null}
+            onClick={() => handleGaslessMint(tokenConfigs[0])}
+          >
+            {signingToken === "BGT" ? "Minting..." : `Gasless Mint 100 ${tokenConfigs[0].symbol}`}
           </button>
-          <button className="btn btn-accent" disabled={isMintingSPT} onClick={() => handleMint(tokenConfigs[1])}>
-            {tokenConfigs[1].icon} Mint 100 {tokenConfigs[1].symbol}
+          <button
+            className="btn btn-primary border-white"
+            disabled={signingToken !== null}
+            onClick={() => handleGaslessMint(tokenConfigs[1])}
+          >
+            {signingToken === "SPT" ? "Minting..." : `Gasless Mint 100 ${tokenConfigs[1].symbol}`}
           </button>
         </div>
-        {mintStatus && <div className="text-success mb-4">{mintStatus}</div>}
+        {gaslessMintStatus && <div className="text-info mb-4">{gaslessMintStatus}</div>}
       </div>
-      <div className="w-full mb-6">
+      <div className="w-full mb-4">
         <h2 className="text-xl font-bold mb-2">Step 2: Try Gasless Swap</h2>
         <p className="mb-4">
           Now that you have tokens, go to the swap page and try a gasless swap using ERC-2612 permit!
           <br />
+          <br />
           <span className="font-bold">You can swap BGT for SPT, or SPT for BGT. it is instant and gasless.</span>
         </p>
         <div className="flex justify-center">
-          <Link href="/" className="btn btn-accent text-lg px-8">
+          <Link href="/" className="btn btn-accent border-white text-lg px-8">
             Go to Swap
           </Link>
         </div>
       </div>
-      <div className="w-full mt-8 text-xs text-base-content/50 text-center">
-        Want the technical details?{" "}
+      <div className="w-full mt-4 text-xs text-base-content/50 text-center">
+        Want more technical details?{" "}
         <a href="https://eips.ethereum.org/EIPS/eip-2612" target="_blank" className="underline">
           Read the full ERC-2612 spec
         </a>
         .
       </div>
+
+      {/* Success Modal */}
+      <dialog id="gasless-mint-success-modal" className="modal">
+        <div className="modal-box">
+          <h3 className="font-bold text-lg text-success">🎉 Gasless Mint Successful!</h3>
+          <p className="py-4">Your tokens have been minted successfully using gasless transactions. No ETH needed!</p>
+          <div className="bg-base-200 p-3 rounded-lg mb-4">
+            <p className="text-sm font-mono break-all">Tx: {txHash || "Transaction hash not available"}</p>
+          </div>
+          <div className="modal-action">
+            <form method="dialog">
+              <button className="btn btn-success">Close</button>
+            </form>
+          </div>
+        </div>
+      </dialog>
     </div>
   );
 };

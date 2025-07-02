@@ -1,100 +1,136 @@
-# 🏗 Scaffold-ETH 2
+# ⚡ Gasless Swap
 
 <h4 align="center">
-  <a href="https://docs.scaffoldeth.io">Documentation</a> |
-  <a href="https://scaffoldeth.io">Website</a>
+  <em>Swap tokens instantly and gaslessly using EIP-2612 permits and a backend relayer</em>
 </h4>
 
-🧪 An open-source, up-to-date toolkit for building decentralized applications (dapps) on the Ethereum blockchain. It's designed to make it easier for developers to create and deploy smart contracts and build user interfaces that interact with those contracts.
+Gasless Swap is a decentralized application (dApp) that enables users to swap between two ERC-20 tokens—BuildguidlToken (BGT) and SuperToken (SPT)—with a 2% fee, using EIP-2612 "permit" signatures for gasless approvals. Users do not need ETH to approve or swap; they simply sign a message, and a backend relayer submits the transaction on-chain.
 
-⚙️ Built using NextJS, RainbowKit, Foundry, Wagmi, Viem, and Typescript.
+---
 
-- ✅ **Contract Hot Reload**: Your frontend auto-adapts to your smart contract as you edit it.
-- 🪝 **[Custom hooks](https://docs.scaffoldeth.io/hooks/)**: Collection of React hooks wrapper around [wagmi](https://wagmi.sh/) to simplify interactions with smart contracts with typescript autocompletion.
-- 🧱 [**Components**](https://docs.scaffoldeth.io/components/): Collection of common web3 components to quickly build your frontend.
-- 🔥 **Burner Wallet & Local Faucet**: Quickly test your application with a burner wallet and local faucet.
-- 🔐 **Integration with Wallet Providers**: Connect to different wallet providers and interact with the Ethereum network.
+## 🚀 Features
 
-![Debug Contracts tab](https://github.com/scaffold-eth/scaffold-eth-2/assets/55535804/b237af0c-5027-4849-a5c1-2e31495cccb1)
+- **Truly Gasless Swaps:** Users swap tokens without paying gas for approvals or swaps, thanks to EIP-2612 permits and a backend relayer.
+- **EIP-2612 Permit Integration:** Uses off-chain signatures for token approvals, enabling a seamless, gasless user experience.
+- **2% Swap Fee:** Each swap charges a 2% fee, deducted from the input amount.
+- **Instant 1:1 Swaps:** Swap between BGT and SPT instantly at a 1:1 rate (minus fee).
+- **Open Minting:** Both tokens can be minted by anyone, with per-transaction and total supply caps.
+- **Swap History:** Users can view their recent swaps directly in the UI.
+- **Modern UI:** Built with Next.js, RainbowKit, Wagmi, and Typescript.
+- **Smart Contracts:** Written in Solidity, deployed via Foundry scripts.
 
-## Requirements
+---
 
-Before you begin, you need to install the following tools:
+## 🏗️ Architecture
+
+### Frontend
+- **Next.js App**: Provides a swap interface, token minting, and swap history.
+- **Custom Hooks**: For contract reads/writes and EIP-2612 permit signing.
+- **No ETH Required**: Users interact without holding ETH.
+
+### Backend
+- **Node.js/Express Relayer**: Receives signed permit and swap requests, submits them to the SwapContract on-chain, and logs swap history.
+- **Ethers.js**: For contract interaction and transaction signing.
+
+### Smart Contracts
+- **SwapContract.sol**: Handles swaps, fees, and gasless permit logic.
+- **BuildguidlToken.sol & SuperToken.sol**: ERC-20 tokens with EIP-2612 permit and open minting.
+
+---
+
+## 📄 Smart Contracts
+
+- `SwapContract.sol`: Swaps BGT ↔ SPT at 1:1 minus a 2% fee, using EIP-2612 gasless approvals. Only the contract owner can withdraw tokens. Emits events for debugging and tracking.
+- `BuildguidlToken.sol` & `SuperToken.sol`: ERC-20 tokens with EIP-2612 permit, open minting (with per-tx and total supply caps).
+- `IERC20Permit.sol`: Interface for ERC-20 tokens supporting EIP-2612 permit.
+
+---
+
+## ⚙️ Requirements
 
 - [Node (>= v20.18.3)](https://nodejs.org/en/download/)
 - Yarn ([v1](https://classic.yarnpkg.com/en/docs/install/) or [v2+](https://yarnpkg.com/getting-started/install))
 - [Git](https://git-scm.com/downloads)
 
-## Quickstart
+---
 
-To get started with Scaffold-ETH 2, follow the steps below:
+## 🏁 Quickstart
 
-1. Install dependencies if it was skipped in CLI:
+1. **Install dependencies:**
+   ```sh
+   yarn install
+   ```
+2. **Run a local network:**
+   ```sh
+   yarn chain
+   ```
+   Starts a local Ethereum network using Foundry. Customize in `packages/foundry/foundry.toml`.
+3. **Deploy contracts:**
+   ```sh
+   yarn deploy
+   ```
+   Deploys all contracts (tokens and swap contract) to the local network.
+4. **Start the frontend:**
+   ```sh
+   yarn start
+   ```
+   Visit your app at `http://localhost:3000`.
+5. **Run smart contract tests:**
+   ```sh
+   yarn foundry:test
+   ```
 
-```
-cd my-dapp-example
-yarn install
-```
+- Edit smart contracts in `packages/foundry/contracts`
+- Edit frontend homepage at `packages/nextjs/app/page.tsx`
+- Edit deployment scripts in `packages/foundry/script`
 
-2. Run a local network in the first terminal:
+---
 
-```
-yarn chain
-```
+## 🔬 How Gasless Swaps Work
 
-This command starts a local Ethereum network using Foundry. The network runs on your local machine and can be used for testing and development. You can customize the network configuration in `packages/foundry/foundry.toml`.
+1. **Mint Tokens:** Users mint BGT or SPT to their wallet (with per-tx and total supply caps).
+2. **Sign Permit:** When swapping, users sign an EIP-2612 permit message (off-chain, no gas).
+3. **Swap:** The backend relayer submits the swap transaction using the permit, paying the gas.
+4. **Receive Tokens:** Users receive the output token minus the 2% fee.
+5. **View History:** Users can view their recent swaps in the UI.
 
-3. On a second terminal, deploy the test contract:
+### EIP-2612 Permit
+- Enables gasless token approvals via off-chain signatures.
+- The relayer submits the signed permit and swap in a single transaction.
 
-```
-yarn deploy
-```
+### Relayer
+- The backend service receives the signed permit and swap request.
+- Submits the transaction to the SwapContract, paying the gas.
+- Logs the swap in the database for history display.
 
-This command deploys a test smart contract to the local network. The contract is located in `packages/foundry/contracts` and can be modified to suit your needs. The `yarn deploy` command uses the deploy script located in `packages/foundry/script` to deploy the contract to the network. You can also customize the deploy script.
+---
 
-4. On a third terminal, start your NextJS app:
+## 🧩 Token Details
 
-```
-yarn start
-```
+- **BuildguidlToken (BGT):**
+  - ERC-20 with EIP-2612 permit
+  - 1 billion max supply, 10,000 max mint per tx
+- **SuperToken (SPT):**
+  - ERC-20 with EIP-2612 permit
+  - 1 billion max supply, 10,000 max mint per tx
 
-Visit your app on: `http://localhost:3000`. You can interact with your smart contract using the `Debug Contracts` page. You can tweak the app config in `packages/nextjs/scaffold.config.ts`.
+---
 
-Run smart contract test with `yarn foundry:test`
+## 🛠️ Contributing
 
-- Edit your smart contracts in `packages/foundry/contracts`
-- Edit your frontend homepage at `packages/nextjs/app/page.tsx`. For guidance on [routing](https://nextjs.org/docs/app/building-your-application/routing/defining-routes) and configuring [pages/layouts](https://nextjs.org/docs/app/building-your-application/routing/pages-and-layouts) checkout the Next.js documentation.
-- Edit your deployment scripts in `packages/foundry/script`
+We welcome contributions to Gasless Swap!
 
-## 🚀 Setup ERC-20 Token Extension
+- Fork the repo and create a feature branch.
+- Submit a pull request with a clear description of your changes.
+- For major changes, open an issue first to discuss what you'd like to change.
 
-This extension introduces an ERC-20 token contract and demonstrates how to use interact with it, including getting a holder balance and transferring tokens.
+---
 
-The ERC-20 Token Standard introduces a standard for Fungible Tokens ([EIP-20](https://eips.ethereum.org/EIPS/eip-20)), in other words, each Token is exactly the same (in type and value) as any other Token.
+## 📚 Further Reading
 
-The ERC-20 token contract is implemented using the [ERC-20 token implementation](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/ERC20.sol) from OpenZeppelin.
+- [EIP-2612: permit – 712-signed approvals](https://eips.ethereum.org/EIPS/eip-2612)
+- [Foundry Book](https://book.getfoundry.sh/)
+- [Wagmi Docs](https://wagmi.sh/)
+- [RainbowKit Docs](https://www.rainbowkit.com/docs/introduction)
 
-### Setup
-
-Deploy your contract running ```yarn deploy```
-
-### Interact with the token
-
-Start the front-end with ```yarn start``` and go to the _/erc20_ page to interact with your deployed ERC-20 token.
-
-You can check the code at ```packages/nextjs/app/erc20/page.tsx```.
-
-
-## Documentation
-
-Visit our [docs](https://docs.scaffoldeth.io) to learn how to start building with Scaffold-ETH 2.
-
-To know more about its features, check out our [website](https://scaffoldeth.io).
-
-## Contributing to Scaffold-ETH 2
-
-We welcome contributions to Scaffold-ETH 2!
-
-Please see [CONTRIBUTING.MD](https://github.com/scaffold-eth/scaffold-eth-2/blob/main/CONTRIBUTING.md) for more information and guidelines for contributing to Scaffold-ETH 2.
-
-// OWNER ACCOUNT FOR DEPLOYMENT - 0x1b858848f8b57ba2169a60706d1c27569d369bc9
+---
