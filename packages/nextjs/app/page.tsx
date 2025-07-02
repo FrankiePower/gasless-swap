@@ -62,6 +62,7 @@ export default function DaisyUIGaslessSwap() {
   const [toAmount, setToAmount] = useState("");
   const [slippage, setSlippage] = useState(0.5);
   const [autoSlippage, setAutoSlippage] = useState(true);
+  const [txHash, setTxHash] = useState<string>("");
   const { signPermit, isSigning } = usePermitSign();
 
   // Set tokenAddress in global context when fromToken changes
@@ -137,10 +138,14 @@ export default function DaisyUIGaslessSwap() {
       }
       const data = await response.json();
       if (data.status) {
-        alert("Swap successful!");
-        console.log("Transaction hash:", data.transactionHash);
-        // Refresh the swap history after successful swap
-        window.location.reload(); // Simple refresh for now
+        // Show success modal instead of alert
+        setTxHash(data.txHash);
+        const modal = document.getElementById("swap-success-modal") as HTMLDialogElement;
+        if (modal) {
+          modal.showModal();
+        }
+        console.log("Transaction hash:", data.txHash);
+        // Don't refresh immediately - let user see the modal first
       } else {
         throw new Error(data.error || "Swap failed");
       }
@@ -315,8 +320,32 @@ export default function DaisyUIGaslessSwap() {
               onClick={handleSwap}
               disabled={!fromAmount || !toAmount || isSigning || isSwapping}
             >
-              {isSigning ? "Signing..." : isSwapping ? "Swapping..." : "Swap"}
+              {isSigning ? (
+                <>
+                  <span className="loading loading-spinner loading-sm"></span>
+                  Signing...
+                </>
+              ) : isSwapping ? (
+                <>
+                  <span className="loading loading-spinner loading-sm"></span>
+                  Swapping...
+                </>
+              ) : (
+                "Swap"
+              )}
             </button>
+
+            {/* Info: How to get free tokens */}
+            <div className="alert alert-info flex flex-col items-start gap-2">
+              <span className="font-semibold">Need free tokens?</span>
+              <span>
+                Go to the{" "}
+                <a href="/eip2612" className="link link-primary underline font-semibold">
+                  ERC-2612 page
+                </a>{" "}
+                to mint for free!
+              </span>
+            </div>
 
             {/* Info Alert */}
             <div className="alert alert-warning">
@@ -449,6 +478,22 @@ export default function DaisyUIGaslessSwap() {
           </div>
         </div>
       </div>
+
+      {/* Swap Success Modal */}
+      <dialog id="swap-success-modal" className="modal">
+        <div className="modal-box">
+          <h3 className="font-bold text-lg text-success">🎉 Swap Successful!</h3>
+          <p className="py-4">Your tokens have been swapped successfully using gasless transactions. No ETH needed!</p>
+          <div className="bg-base-200 p-3 rounded-lg mb-4">
+            <p className="text-sm font-mono break-all">Tx: {txHash || "Transaction hash not available"}</p>
+          </div>
+          <div className="modal-action">
+            <form method="dialog">
+              <button className="btn btn-success">Close</button>
+            </form>
+          </div>
+        </div>
+      </dialog>
     </div>
   );
 }
