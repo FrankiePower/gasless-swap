@@ -5,6 +5,7 @@ import { connectDb } from "./common/config/database";
 import cors from "cors";
 import swapRouter from "./modules/routes/swap.router";
 import swapHistoryRouter from "./modules/routes/swapHistory.router";
+import gaslessMintRouter from "./modules/routes/gaslessMint.router";
 
 app.use(cors());
 
@@ -15,6 +16,7 @@ app.disable("x-powered-by");
 // Routes
 app.use("/api", swapRouter);
 app.use("/api/history", swapHistoryRouter);
+app.use("/api/mint", gaslessMintRouter);
 
 // Welcome Message
 app.get("/", (req: Request, res: Response) => {
